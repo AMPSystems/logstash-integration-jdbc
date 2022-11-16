@@ -5,10 +5,6 @@ cd "$(dirname -- "$0";)"
 # Install rake and bundler
 gem install rake bundler
 
-export OSS=true
-export LOGSTASH_PATH=/logstash
-export LOGSTASH_SOURCE=1
-
 # Build logstash
 pushd /logstash
 ./gradlew installDevelopmentGems

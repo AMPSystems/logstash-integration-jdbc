@@ -12,3 +12,6 @@ RUN git clone https://github.com/elastic/logstash.git /logstash
 # Install rvm Ruby Version Manager
 RUN gpg2 --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
 RUN curl -sSL https://get.rvm.io | bash -s stable --ruby=$(cat /logstash/.ruby-version)
+
+# Set up development env vars
+RUN echo "export LOGSTASH_PATH=/logstash && export LOGSTASH_SOURCE=1 && export OSS=true" > /etc/profile.d/logstash.sh

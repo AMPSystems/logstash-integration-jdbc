@@ -1,6 +1,8 @@
 # encoding: utf-8
 
 module LogStash module PluginMixins module Jdbc
+  class StatementError < StandardError; end
+
   class StatementHandler
     def self.build_statement_handler(plugin)
       if plugin.use_prepared_statements
@@ -9,6 +11,8 @@ module LogStash module PluginMixins module Jdbc
         if plugin.jdbc_paging_enabled
           if plugin.jdbc_paging_mode == "explicit"
             klass = ExplicitPagingModeStatementHandler
+          elsif plugin.jdbc_paging_mode == "seek"
+            klass = SeekPagingModeStatementHandler
           else
             klass = PagedNormalStatementHandler
           end
@@ -120,6 +124,53 @@ module LogStash module PluginMixins module Jdbc
         break unless rows_in_page == page_size
         offset += page_size
       end
+    end
+  end
+
+  class SeekPagingModeStatementHandler < PagedNormalStatementHandler
+
+    def initialize(plugin)
+      super(plugin)
+      @tracking_column = plugin.tracking_column
+    end
+
+    # Performs the query, respecting our pagination settings, yielding once per row of data
+    # @param db [Sequel::Database]
+    # @param sql_last_value [Integer|DateTime|Time]
+    # @yieldparam row [Hash{Symbol=>Object}]
+    def perform_query(db, sql_last_value)
+      query = build_query(db, sql_last_value)
+      page_sql_last_value = sql_last_value
+      next_page_sql_last_value = sql_last_value
+      page_size = @jdbc_page_size
+      loop do
+        rows_in_page = 0
+        query.with_sql(query.sql, sql_last_value: page_sql_last_value, size: page_size).each do |row|
+          next_page_sql_last_value = get_column_value(row)
+          yield row
+          rows_in_page += 1
+        end
+        break unless rows_in_page == page_size
+        if next_page_sql_last_value == page_sql_last_value
+          raise StatementError.new("tracking_column did not change between pages. Is it not unique?")
+        end
+        page_sql_last_value = next_page_sql_last_value
+      end
+    end
+
+    private
+
+    def get_column_value(row)
+      if !row.has_key?(@tracking_column.to_sym)
+        raise StatementError.new("tracking_column not found in dataset.")
+      else
+        # Otherwise send the updated tracking column
+        row[@tracking_column.to_sym]
+      end
+    end
+
+    def build_query(db, sql_last_value)
+      db[statement]
     end
   end
 

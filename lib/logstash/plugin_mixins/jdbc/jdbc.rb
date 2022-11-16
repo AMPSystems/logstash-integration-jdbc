@@ -56,7 +56,7 @@ module LogStash  module PluginMixins module Jdbc
       config :jdbc_paging_enabled, :validate => :boolean, :default => false
 
       # Which pagination mode to use, automatic pagination or explicitly defined in the query.
-      config :jdbc_paging_mode, :validate => [ "auto", "explicit" ], :default => "auto"
+      config :jdbc_paging_mode, :validate => [ "auto", "explicit", "seek" ], :default => "auto"
 
       # JDBC page size
       config :jdbc_page_size, :validate => :number, :default => 100000
@@ -259,5 +259,3 @@ module LogStash  module PluginMixins module Jdbc
     end
   end
 end end end
-
-
